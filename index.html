@@ -139,7 +139,36 @@
 
                     <hr class="border-slate-100">
 
-                    <!-- Section 3: ความต้องการของระบบ -->
+                    <!-- Section 3: ฐานข้อมูล (Database) -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-database text-primary"></i>
+                            <h3 class="font-semibold text-lg text-slate-800">ฐานข้อมูล (Database)</h3>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="dbOption" value="no" class="w-5 h-5 text-primary focus:ring-primary accent-primary" checked onchange="toggleDbInput()">
+                                    <span class="text-slate-700 font-medium">ไม่ใช้ฐานข้อมูล (ทำแค่หน้าเว็บ UI)</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="dbOption" value="yes" class="w-5 h-5 text-primary focus:ring-primary accent-primary" onchange="toggleDbInput()">
+                                    <span class="text-slate-700 font-medium">ใช้ Google Sheet เป็นฐานข้อมูล</span>
+                                </label>
+                            </div>
+                            
+                            <!-- URL Input (Hidden by default) -->
+                            <div id="dbUrlContainer" class="hidden transition-all duration-300">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">ลิงก์ Google Sheet (URL)</label>
+                                <input type="text" id="dbUrl" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="เช่น https://docs.google.com/spreadsheets/d/1xxxxxxx/edit">
+                                <p class="text-xs text-slate-500 mt-1.5"><i class="fa-solid fa-circle-info mr-1"></i> หากระบุ URL ระบบจะเพิ่มคำสั่งให้ AI สร้างโค้ดเชื่อมต่อฝั่ง Google Apps Script ให้ด้วย</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100">
+
+                    <!-- Section 4: ความต้องการของระบบ -->
                     <div>
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-2">
@@ -148,7 +177,11 @@
                             </div>
                             <span class="text-xs text-slate-400" id="charCount">0 ตัวอักษร</span>
                         </div>
-                        <textarea id="sysReqs" rows="6" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none" placeholder="อธิบายการทำงานที่ต้องการ เช่น:&#10;- มีหน้าฟอร์มบันทึกข้อมูล (ชื่อ, นามสกุล, เบอร์โทร)&#10;- มีตารางแสดงข้อมูลที่บันทึกแล้ว&#10;- มีปุ่ม Export ข้อมูลเป็น Excel หรือ PDF&#10;- มีระบบค้นหาข้อมูลจากชื่อ" onkeyup="countChars(this)"></textarea>
+                        <textarea id="sysReqs" rows="6" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none" onkeyup="countChars(this)">อธิบายการทำงานที่ต้องการ เช่น:
+- มีหน้าฟอร์มบันทึกข้อมูล (ชื่อ, นามสกุล, เบอร์โทร)
+- มีตารางแสดงข้อมูลที่บันทึกแล้ว
+- มีปุ่ม Export ข้อมูลเป็น Excel หรือ PDF
+- มีระบบค้นหาข้อมูลจากชื่อ</textarea>
                     </div>
 
                     <!-- Generate Button -->
@@ -218,6 +251,25 @@
             document.getElementById('charCount').textContent = obj.value.length + ' ตัวอักษร';
         }
 
+        // Initialize character count on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            countChars(document.getElementById('sysReqs'));
+        });
+
+        // Toggle Database Input
+        function toggleDbInput() {
+            const dbOption = document.querySelector('input[name="dbOption"]:checked').value;
+            const container = document.getElementById('dbUrlContainer');
+            
+            if (dbOption === 'yes') {
+                container.classList.remove('hidden');
+                document.getElementById('dbUrl').focus();
+            } else {
+                container.classList.add('hidden');
+                document.getElementById('dbUrl').value = ''; // เคลียร์ค่าเมื่อเลือกไม่ใช้
+            }
+        }
+
         // Generate Prompt Logic
         function generatePrompt() {
             const sysName = document.getElementById('sysName').value.trim() || '[ระบุชื่อระบบ]';
@@ -225,13 +277,28 @@
             const sysColor = document.getElementById('sysColor').value.trim() || 'ขาว-น้ำเงิน';
             const sysReqs = document.getElementById('sysReqs').value.trim() || '- กรุณาระบุรายละเอียดฟังก์ชันการทำงานที่ต้องการ';
 
+            // ข้อมูลการเลือกฐานข้อมูล
+            const dbOption = document.querySelector('input[name="dbOption"]:checked').value;
+            const dbUrl = document.getElementById('dbUrl').value.trim();
+            
+            let dbPromptText = "";
+            let dbTechRequirement = "";
+            
+            if (dbOption === 'yes') {
+                dbPromptText = `\n- ฐานข้อมูล (Database): ใช้ Google Sheet\n- URL ของ Google Sheet: ${dbUrl || '[ผู้ใช้งานจะระบุภายหลัง]'}`;
+                dbTechRequirement = `\n6. เนื่องจากมีการใช้ Google Sheet เป็นฐานข้อมูล กรุณาเขียนโค้ดฝั่ง Server (Code.gs) สำหรับจัดการข้อมูล (CRUD) และฝั่ง Client (HTML/JS) ให้เชื่อมต่อและเรียกใช้ฟังก์ชันผ่าน google.script.run ด้วย`;
+            } else {
+                dbPromptText = `\n- ฐานข้อมูล (Database): ไม่ใช้งาน (เน้นทำโครงสร้างหน้าเว็บ UI เท่านั้น)`;
+                dbTechRequirement = ``;
+            }
+
             const template = `ทำหน้าที่เป็น Expert Web Developer เชี่ยวชาญด้าน HTML, CSS (TailwindCSS) และ JavaScript (Vanilla JS)
 โปรดสร้าง Web Application ตามรายละเอียดด้านล่างนี้ โดยเขียนโค้ดทั้งหมด (HTML, CSS, JS) รวมอยู่ในไฟล์ .html เพียงไฟล์เดียว (Single File) เพื่อให้พร้อมนำไปใช้งานบน Google Apps Script หรือ GitHub Pages ได้ทันที
 
 ข้อมูลระบบ:
 - ชื่อระบบ: ${sysName}
 - สไตล์การออกแบบ: ${sysStyle}
-- โทนสีหลัก: ${sysColor}
+- โทนสีหลัก: ${sysColor}${dbPromptText}
 
 ความต้องการและฟังก์ชันการทำงาน (Requirements):
 ${sysReqs}
@@ -241,7 +308,7 @@ ${sysReqs}
 2. สร้างหน้าเว็บแบบ Responsive รองรับการแสดงผลทั้งบนมือถือ แท็บเล็ต และคอมพิวเตอร์
 3. ออกแบบ UI/UX ให้ทันสมัย มีการเว้นช่องไฟ (Whitespace) ที่เหมาะสม และใช้มุมโค้งมน
 4. ข้อความและเมนูในระบบทั้งหมดให้ใช้ "ภาษาไทย"
-5. ขอโค้ดที่สมบูรณ์ โครงสร้างชัดเจน และมีคอมเมนต์อธิบายการทำงานของฟังก์ชันหลัก`;
+5. ขอโค้ดที่สมบูรณ์ โครงสร้างชัดเจน และมีคอมเมนต์อธิบายการทำงานของฟังก์ชันหลัก${dbTechRequirement}`;
 
             const promptArea = document.getElementById('generatedPrompt');
             promptArea.value = template;
